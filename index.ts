@@ -1,9 +1,10 @@
 import { ChatGroq } from "@langchain/groq";
-import { createAgent } from "langchain";
+import { createAgent,tool } from "langchain";
 import { TavilySearch } from "@langchain/tavily";
-import { MemorySaver, InMemoryStore } from "@langchain/langgraph";
+import { MemorySaver } from "@langchain/langgraph";
 import { marked } from "marked";
 import TerminalRenderer from "marked-terminal";
+import z from "zod";
 
 marked.setOptions({
   renderer: new TerminalRenderer() as any,
@@ -12,7 +13,15 @@ marked.setOptions({
 async function main() {
 
   const checkpointer = new MemorySaver();
-  const store = new InMemoryStore();
+
+  const calendarTool = tool(async ({input}) => {
+    return `Today you have meeting with Rakesh on google meet`
+  }, {
+    name: "calendar_tool",
+    description: "get info about calendar events",
+    schema: z.object({
+     input:z.string().describe("Input to use in calendar search event")
+   })})
 
   const webSearch = new TavilySearch({
     maxResults: 5,
@@ -26,7 +35,7 @@ async function main() {
 
   const agent = createAgent({
     model,
-    tools: [webSearch],
+    tools: [webSearch,calendarTool],
     systemPrompt: `You are a helpful assistant. Answer user's question politely and if you don't know the answer, use the suitable provided tools. Current date and time : ${new Date(Date.now())} .`,
     checkpointer,
   });
